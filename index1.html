@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Data Visualization</title>
+            <link rel="stylesheet" type="text/css" href="style.css">
+
+            <script src="echarts.min.js"></script>
+        </head>
+        <body>
+            <div class="container">
+                <div class="chart_1">
+                    <div class="chart_title">
+                        <span>city_centre_LSOAs</span>
+                    </div>
+                    <div class="chart_desc">
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                        <span>descriptiondescriptiondescriptiondescriptiondescriptiondescription</span>
+                    </div>
+
+                    <div>
+                        <select class="chart_select"></select>
+                    </div>
+                    
+                    <div class="echarts_main"></div>
+                </div>
+
+                <div class="chart_2">
+                    <div class="chart_title">
+                        <span>Housing_Prices</span>
+                    </div>
+                    <div class="chart_desc">
+                        <span>Table LR001 represents All Dwellings;
+                            Table LR002 represents Detached Dwellings;
+                            Table LR003 represents Semi-Detached Dwellings;
+                            Table LR004 represents Terraced Dwellings;
+                            Table LR005 represents Flat Dwellings;
+                            Table LR006 represents Other Dwellings;
+                            Table LR007 represents New Dwellings;</span>
+                    </div>
+                    
+                    <div class="echarts_main"></div>
+                </div>
+            </div>
+        </body>
+    </html>
+
+    <script type="text/javascript">
+        let chart1RawData = [];   //图表1原始数据
+        let chart1DataName = 'imd_change10_19';  //图表1默认展示维度
+        let chart1DataList = [];  //图表1默认展示数据
+        let chart1Select = document.getElementsByClassName('chart_select')[0];
+        let areaList = []; //区域代码集合
+
+        let chart2RawData = [];   //图表2原始数据
+        let chart2DataList = [];
+
+        getJSon('data/city_centre_LSOAs.json');
+
+        // 获取第一个图表的json数据
+        function getJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chart1RawData = JSON.parse(xhr.responseText).features;
+
+                    renderSelect(chart1RawData);
+                    renderChart1(chart1RawData, 'imd_change10_19');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        function renderSelect(chart1RawData){
+            let keys = Object.keys(chart1RawData[0].properties);
+
+            chart1Select.options.length = 0;
+
+            keys.forEach((r) => {
+                if(r !== 'LSOA11CD'){
+                    chart1Select.options.add(new Option(r));
+                }
+            });
+        };
+
+        // 下拉框选择切换
+        chart1Select.addEventListener('change', function(e){
+            renderChart1(chart1RawData, e.target.value);
+        });
+
+        // 渲染第一个图表
+        function renderChart1(chart1RawData, current){
+            let xAxisList = [];  //横坐标集合
+
+            chart1DataList = [];
+
+            chart1RawData.forEach((r) => {
+                xAxisList.push(r.properties.LSOA11CD)
+                chart1DataList.push(r.properties[current])
+            });
+
+            areaList = xAxisList;
+
+            // 基于准备好的dom，初始化echarts实例
+            let Chart = echarts.init(document.getElementsByClassName('echarts_main')[0]);
+
+            // 指定图表的配置项和数据
+            let option = {
+                tooltip: {},
+                legend: {
+                    data: [chart1DataName],
+                    left: 'center',
+                },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: [
+                    {
+                        name: chart1DataName,
+                        type: 'bar',
+                        data: chart1DataList
+                    }
+                ]
+            };
+
+            // 使用刚指定的配置项和数据显示图表。
+            Chart.setOption(option);
+        };
+
+        // 图表2用到的数据文件
+        const houseFileNames = [
+            'data/E47000001_LR001MED.json',
+            'data/E47000001_LR002MED.json',
+            'data/E47000001_LR003MED.json',
+            'data/E47000001_LR004MED.json',
+            'data/E47000001_LR005MED.json',
+            'data/E47000001_LR006MED.json',
+            'data/E47000001_LR007MED.json'
+        ];
+
+        getHouseJson(houseFileNames);
+
+        // 获取第二个图表的json数据
+        function getHouseJson(houseFileNames){
+            houseFileNames.forEach((fileName, index) => {
+                let xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = () => {
+                    if(xhr.readyState == 4 && xhr.status == 200){
+                        chart2RawData.push(JSON.parse(xhr.responseText));
+
+                        if(index === 6){
+                            renderChart2(chart2RawData)
+                        }
+                    }
+                }
+                xhr.open('GET', fileName, false)
+                xhr.send(null)
+            })
+        };
+
+        // 渲染第二个图表
+        function renderChart2(chart2RawData){
+            // 过滤区域
+            chart2RawData.forEach((data) => {
+                let filterData = data.filter((r) => {return areaList.indexOf(r.lsoa11cd) > -1})
+
+                chart2DataList.push(filterData);
+            })
+
+            console.log(chart2DataList)
+            // 横坐标集合
+            let xAxisList = [];  
+            let keys = Object.keys(chart2DataList[0][0]);
+
+            keys.forEach((r) => {
+                if(r !== 'lsoa11cd' && r!== 'CAUTH18NM' && r!== 'lsoa11nm'){
+                    xAxisList.push(r);
+                }
+            });
+
+            // 过滤器
+            let chart2DataName = ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'];
+            let chart2Series = [];
+
+            chart2DataName.forEach((r) => {
+                chart2Series.push({
+                    name: r,
+                    type: 'line',
+                    data: [],
+                })
+            })
+
+            //取平均值作为纵坐标
+            chart2DataList.forEach((houseTypeList, index) => {
+                let yAxisList = []  //纵坐标集合
+
+                xAxisList.forEach((r) => {
+                    let count = 0
+                    let amout = 0
+
+                    houseTypeList.forEach((j)=> {
+                        if(j[r] !== 'NA' && j[r] !== undefined){
+                            amout += parseFloat(j[r])
+                            count += 1
+                        }
+                    })
+
+                    let average = (amout/count).toFixed(3)
+
+                    if(isNaN(average)){
+                        average = 0
+                    }
+
+                    yAxisList.push(average)
+                })
+
+                chart2Series[index].data = yAxisList
+            })
+
+            // 基于准备好的dom，初始化echarts实例
+            let Chart = echarts.init(document.getElementsByClassName('echarts_main')[1]);
+
+            // 指定图表的配置项和数据
+            let option = {
+                tooltip: {},
+                legend: {
+                    data: ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'],
+                    left: 'center',
+                },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: chart2Series
+            };
+
+            // 使用刚指定的配置项和数据显示图表。
+            Chart.setOption(option);
+        };
+
+        
+    </script>
+</html>
